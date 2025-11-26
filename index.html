@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🇯🇵 日本分帳計算表</title>
+    <style>
+        :root {
+            /* 北海道配色：薰衣草紫、雪白、哈密瓜綠 */
+            --primary-color: #9370DB; /* MediumPurple 薰衣草 */
+            --secondary-color: #E6E6FA; /* Lavender 淺紫背景 */
+            --accent-color: #78e08f; /* 嫩綠色 */
+            --text-color: #4a4a4a;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: "Microsoft JhengHei", "Hiragino Sans", sans-serif;
+            background-color: #f8f9fd;
+            background-image: linear-gradient(180deg, #fdfbfb 0%, #ebedee 100%);
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            box-shadow: 0 8px 30px rgba(147, 112, 219, 0.15); /* 紫色柔和陰影 */
+            border-radius: var(--border-radius);
+            border: 1px solid #fff;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 25px;
+        }
+
+        /* 控制按鈕區 */
+        .controls {
+            text-align: right;
+            margin-bottom: 15px;
+        }
+
+        .btn-reset {
+            background-color: #ff7675;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: opacity 0.3s;
+        }
+        .btn-reset:hover { opacity: 0.8; }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: normal;
+            letter-spacing: 1px;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        
+        tr:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .product-name {
+            font-weight: 500;
+        }
+
+        .note {
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 4px;
+            background-color: #f0f0f0;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .price-col {
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            color: #6c5ce7;
+        }
+
+        input[type="number"] {
+            width: 70px;
+            padding: 8px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--primary-color);
+            background-color: #fffaf0;
+        }
+
+        /* 總計欄位美化 */
+        .total-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 800px;
+            background: linear-gradient(135deg, var(--primary-color), #a29bfe);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(147, 112, 219, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .total-item {
+            font-size: 1em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .total-item span {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-left: 5px;
+        }
+
+        .grand-total {
+            background-color: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        /* 手機版響應式 */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 10px; }
+            th, td { padding: 10px 5px; font-size: 0.9em; }
+            input[type="number"] { width: 45px; padding: 5px; }
+            .note { display: none; } /* 手機隱藏備註 */
+            .total-bar {
+                width: 95%;
+                bottom: 10px;
+                padding: 12px;
+                font-size: 0.9em;
+                flex-direction: row;
+                justify-content: space-around;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🇯🇵 日本分帳計算表</h1>
+    <div class="subtitle">Hokkaido Trip Shopping List</div>
+    
+    <div class="controls">
+        <button class="btn-reset" onclick="clearAllData()">🗑️ 清除所有資料</button>
+    </div>
+
+    <table id="calcTable">
+        <thead>
+            <tr>
+                <th>品項</th>
+                <th>單價</th>
+                <th>Neo</th>
+                <th>Ryan</th>
+                <th>小計</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            </tbody>
+    </table>
+    <div style="height: 80px;"></div>
+</div>
+
+<div class="total-bar">
+    <div class="total-item">Neo: <span id="neoTotal">$0</span></div>
+    <div class="total-item">Ryan: <span id="ryanTotal">$0</span></div>
+    <div class="total-item grand-total">Total: <span id="grandTotal">$0</span></div>
+</div>
+
+<script>
+    const products = [
+        { name: "葉黃素100 + 芝麻素 (60粒)", note: "1組(2包)", price: 9164 },
+        { name: "防風通聖散 Z", note: "漢方減肥/便秘藥", price: 5318 },
+        { name: "抹茶提拉米蘇巧克力", note: "", price: 828 },
+        { name: "Alfort 帆船巧克力餅乾", note: "", price: 275 },
+        { name: "龍角散 喉糖", note: "黑醋栗藍莓味", price: 302 },
+        { name: "Ora2 Premium 牙膏", note: "芳香薄荷", price: 367 },
+        { name: "NONIO 牙膏", note: "藥用清涼薄荷", price: 302 },
+        { name: "DHC 武靴葉", note: "Gymnema/控糖 20日", price: 597 },
+        { name: "DHC 維他命C", note: "20日份", price: 155 },
+        { name: "龍角散 直服顆粒", note: "薄荷味/免配水", price: 275 },
+        { name: "KitKat 巧克力", note: "濃厚抹茶", price: 1100 }, 
+        /* 註：原圖KitKat單價275但小計1100(4個)，此處依您的表格邏輯，若單價是275請自行修正，這裡假設表格金額正確 */
+        { name: "UHA味覺糖 Cororo", note: "葡萄", price: 109 },
+        { name: "UHA味覺糖 Cororo", note: "麝香葡萄", price: 109 },
+        { name: "UHA味覺糖 Cororo", note: "20世紀梨", price: 109 },
+        { name: "龍角散 直服顆粒", note: "水蜜桃味", price: 275 },
+        { name: "DHC 亞鉛 (鋅)", note: "20日份", price: 146 },
+        { name: "DHC 綜合維他命B群", note: "20日份", price: 164 },
+        { name: "DHC 甲殼素", note: "20日份", price: 330 },
+        { name: "DHC 肝臟精華+鳥氨酸", note: "20日份(解酒)", price: 735 },
+        { name: "速妙圓 (側柏葉) 喉糖", note: "傳統草本", price: 238 },
+        { name: "DHC 減肥威力", note: "Diet Power 20日", price: 902 }
+    ];
+
+    const tableBody = document.getElementById('tableBody');
+    const neoTotalEl = document.getElementById('neoTotal');
+    const ryanTotalEl = document.getElementById('ryanTotal');
+    const grandTotalEl = document.getElementById('grandTotal');
+    
+    // 存檔鍵值
+    const STORAGE_KEY = 'hokkaido_shopping_v1';
+
+    function initTable() {
+        // 嘗試讀取舊資料
+        const savedData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+
+        products.forEach((product, index) => {
+            const row = document.createElement('tr');
+            const savedNeo = savedData[`neo_${index}`] || '';
+            const savedRyan = savedData[`ryan_${index}`] || '';
+            
+            row.innerHTML = `
+                <td>
+                    <div class="product-name">${product.name}</div>
+                    ${product.note ? `<div class="note">${product.note}</div>` : ''}
+                </td>
+                <td class="price-col">$${product.price.toLocaleString()}</td>
+                <td><input type="number" min="0" class="qty-input neo-input" data-index="${index}" data-price="${product.price}" value="${savedNeo}" placeholder="0"></td>
+                <td><input type="number" min="0" class="qty-input ryan-input" data-index="${index}" data-price="${product.price}" value="${savedRyan}" placeholder="0"></td>
+                <td class="subtotal" style="color: #aaa; font-size:0.9em;">-</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('input', (e) => {
+                saveData();       // 輸入時立刻存檔
+                calculateTotals(); // 重新計算
+            });
+        });
+
+        calculateTotals(); // 初始計算一次
+    }
+
+    function calculateTotals() {
+        let neoSum = 0;
+        let ryanSum = 0;
+        let grandSum = 0;
+
+        const rows = tableBody.querySelectorAll('tr');
+
+        rows.forEach(row => {
+            const neoInput = row.querySelector('.neo-input');
+            const ryanInput = row.querySelector('.ryan-input');
+            const subtotalCell = row.querySelector('.subtotal');
+            const price = parseFloat(neoInput.dataset.price);
+
+            const neoQty = parseFloat(neoInput.value) || 0;
+            const ryanQty = parseFloat(ryanInput.value) || 0;
+
+            const rowTotal = (neoQty + ryanQty) * price;
+            
+            // 視覺優化：有金額才顯示深色，否則淺色
+            if (rowTotal > 0) {
+                subtotalCell.textContent = `$${rowTotal.toLocaleString()}`;
+                subtotalCell.style.color = '#4a4a4a';
+                subtotalCell.style.fontWeight = 'bold';
+            } else {
+                subtotalCell.textContent = '-';
+                subtotalCell.style.color = '#ddd';
+                subtotalCell.style.fontWeight = 'normal';
+            }
+
+            neoSum += neoQty * price;
+            ryanSum += ryanQty * price;
+        });
+
+        grandSum = neoSum + ryanSum;
+
+        neoTotalEl.textContent = `$${neoSum.toLocaleString()}`;
+        ryanTotalEl.textContent = `$${ryanSum.toLocaleString()}`;
+        grandTotalEl.textContent = `$${grandSum.toLocaleString()}`;
+    }
+
+    // 自動存檔功能
+    function saveData() {
+        const data = {};
+        document.querySelectorAll('.neo-input').forEach(input => {
+            if(input.value) data[`neo_${input.dataset.index}`] = input.value;
+        });
+        document.querySelectorAll('.ryan-input').forEach(input => {
+            if(input.value) data[`ryan_${input.dataset.index}`] = input.value;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    // 清除資料功能
+    function clearAllData() {
+        if(confirm('確定要清除所有輸入的數量嗎？此動作無法復原。')) {
+            localStorage.removeItem(STORAGE_KEY);
+            document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+            calculateTotals();
+        }
+    }
+
+    initTable();
+</script>
+
+</body>
+</html>
