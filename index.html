@@ -1,673 +1,409 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🇯🇵 日本分帳計算表 (多人版)</title>
-    <style>
-        :root {
-            /* 北海道薰衣草配色 */
-            --primary-color: #9370DB; 
-            --primary-dark: #663399;
-            --bg-color: #f3f4f6;
-            --text-color: #374151;
-            --error-color: #ef4444;
-            --success-color: #10b981;
-            --border-radius: 12px;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 20px;
-            padding-bottom: 120px; /* 給底部懸浮欄空間 */
-            color: var(--text-color);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: var(--border-radius);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
-
-        h1 {
-            text-align: center;
-            color: var(--primary-color);
-            margin-top: 0;
-            font-size: 1.5rem;
-        }
-
-        /* --- 成員管理區塊 --- */
-        .member-section {
-            background-color: #f8fafc;
-            border: 2px dashed #cbd5e1;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .section-title {
-            font-weight: bold;
-            color: #64748b;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .member-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-
-        .member-tag {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .member-remove {
-            cursor: pointer;
-            background: rgba(255,255,255,0.3);
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-        .member-remove:hover { background: rgba(255,0,0,0.5); }
-
-        .add-member-form {
-            display: flex;
-            gap: 10px;
-        }
-
-        /* --- 分頁標籤 --- */
-        .tabs-wrapper {
-            display: flex;
-            overflow-x: auto;
-            gap: 5px;
-            border-bottom: 2px solid var(--primary-color);
-            margin-bottom: 15px;
-            padding-bottom: 2px;
-        }
-        
-        .tab {
-            padding: 10px 20px;
-            background: #e2e8f0;
-            border-radius: 8px 8px 0 0;
-            cursor: pointer;
-            white-space: nowrap;
-            color: #64748b;
-            font-weight: 600;
-            transition: 0.2s;
-        }
-
-        .tab.active {
-            background: var(--primary-color);
-            color: white;
-        }
-
-        .btn-icon {
-            border: none;
-            cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 6px;
-            transition: 0.2s;
-            font-size: 0.9rem;
-        }
-        .btn-primary { background: var(--primary-color); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        
-        .btn-danger { background: #fee2e2; color: #991b1b; }
-        .btn-danger:hover { background: #fca5a5; }
-
-        /* --- 表格容器 (支援橫向捲動) --- */
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 600px; /* 防止在手機上擠成一團 */
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: center;
-            border-bottom: 1px solid #e2e8f0;
-            white-space: nowrap;
-        }
-
-        th {
-            background-color: var(--primary-color);
-            color: white;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        /* 固定第一欄 (品名) */
-        th:first-child, td:first-child {
-            position: sticky;
-            left: 0;
-            background-color: inherit; /* 跟隨父層背景 */
-            z-index: 20; /* 比表頭高一點或是同層級 */
-            text-align: left;
-            min-width: 140px;
-            border-right: 2px solid #e2e8f0;
-        }
-        tbody td:first-child { background-color: #fff; }
-        thead th:first-child { background-color: var(--primary-color); }
-
-        .note {
-            font-size: 0.75em;
-            color: #6b7280;
-            display: block;
-            margin-top: 2px;
-        }
-
-        input[type="number"] {
-            width: 50px;
-            padding: 6px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            text-align: center;
-        }
-        input[type="number"]:focus {
-            outline: 2px solid var(--primary-color);
-            border-color: transparent;
-        }
-
-        .input-error { background-color: #fef2f2; border-color: var(--error-color) !important; color: var(--error-color); }
-        
-        .remain-ok { color: var(--success-color); font-weight: bold; }
-        .remain-error { color: var(--error-color); font-weight: bold; }
-
-        /* --- 底部懸浮總計列 --- */
-        .total-bar {
-            position: fixed;
-            bottom: 20px;
-            left: 5%;
-            width: 90%;
-            background: rgba(30, 41, 59, 0.95);
-            backdrop-filter: blur(8px);
-            color: white;
-            border-radius: 16px;
-            padding: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            overflow-x: auto; /* 支援多人時橫向滑動 */
-            gap: 20px;
-        }
-
-        .total-grand {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: #fbbf24; /* 金黃色 */
-            padding-right: 20px;
-            border-right: 1px solid rgba(255,255,255,0.2);
-            white-space: nowrap;
-        }
-
-        .total-user {
-            display: flex;
-            flex-direction: column;
-            font-size: 0.85rem;
-            min-width: 60px;
-            text-align: center;
-        }
-        .total-user span { font-weight: bold; font-size: 1rem; }
-
-        /* --- 新增項目區 --- */
-        .add-item-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 15px;
-            background: #f1f5f9;
-            padding: 10px;
-            border-radius: 8px;
-            flex-wrap: wrap;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <h1>🇯🇵 日本代購分帳 (多人版)</h1>
-
-    <div class="member-section">
-        <div class="section-title">⚙️ 成員設定 (點擊 X 移除)</div>
-        <div class="member-tags" id="memberTags">
-            </div>
-        <div class="add-member-form">
-            <input type="text" id="newMemberName" placeholder="輸入名字..." style="width: 120px; padding: 6px;">
-            <button class="btn-icon btn-primary" onclick="addMember()">+ 新增成員</button>
-        </div>
-    </div>
-
-    <div class="tabs-wrapper" id="tabsHeader">
-        </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <input type="text" id="orderName" onchange="updateOrderName(this.value)" 
-               style="font-size:1.1em; font-weight:bold; border:none; border-bottom:1px solid #ccc; width:150px;" >
-        
-        <div>
-            <button class="btn-icon btn-danger" onclick="deleteCurrentOrder()">🗑️ 刪除訂單</button>
-        </div>
-    </div>
-
-    <div class="table-responsive">
-        <table id="mainTable">
-            <thead>
-                <tr id="tableHeader">
-                    </tr>
-            </thead>
-            <tbody id="tableBody">
-                </tbody>
-        </table>
-    </div>
-
-    <div class="add-item-row">
-        <input type="text" id="addItemName" placeholder="品項名稱" style="flex:2; min-width:100px;">
-        <input type="number" id="addItemPrice" placeholder="單價" style="width:70px;">
-        <input type="number" id="addItemLimit" placeholder="原購量" style="width:60px;">
-        <button class="btn-icon btn-primary" onclick="addNewItem()">加入清單</button>
-    </div>
-</div>
-
-<div class="total-bar" id="totalBar">
-    </div>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SUNNY LINKS - Filter & Snap</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
 
 <script>
-    // --- 預設資料模版 ---
-    const defaultItems = [
-        { name: "葉黃素100 + 芝麻素", note: "1組(2包)", price: 9164, limit: 1 },
-        { name: "防風通聖散 Z", note: "漢方減肥/便秘", price: 5318, limit: 2 },
-        { name: "抹茶提拉米蘇巧克力", note: "", price: 828, limit: 2 },
-        { name: "Alfort 帆船巧克力", note: "", price: 275, limit: 1 },
-        { name: "龍角散 喉糖", note: "黑醋栗藍莓", price: 302, limit: 1 },
-        { name: "Ora2 Premium 牙膏", note: "芳香薄荷", price: 367, limit: 1 },
-        { name: "NONIO 牙膏", note: "藥用清涼薄荷", price: 302, limit: 1 },
-        { name: "DHC 武靴葉", note: "控糖 20日", price: 597, limit: 4 },
-        { name: "DHC 維他命C", note: "20日份", price: 155, limit: 7 },
-        { name: "龍角散 直服顆粒", note: "薄荷味", price: 275, limit: 2 },
-        { name: "KitKat 巧克力", note: "濃厚抹茶", price: 275, limit: 4 },
-        { name: "UHA味覺糖 Cororo", note: "葡萄", price: 109, limit: 5 },
-        { name: "UHA味覺糖 Cororo", note: "麝香葡萄", price: 109, limit: 5 },
-        { name: "UHA味覺糖 Cororo", note: "20世紀梨", price: 109, limit: 3 },
-        { name: "龍角散 直服顆粒", note: "水蜜桃味", price: 275, limit: 1 },
-        { name: "DHC 亞鉛 (鋅)", note: "20日份", price: 146, limit: 1 },
-        { name: "DHC 綜合維他命B群", note: "20日份", price: 164, limit: 2 },
-        { name: "DHC 甲殼素", note: "20日份", price: 330, limit: 2 },
-        { name: "DHC 肝臟精華+鳥氨酸", note: "20日份", price: 735, limit: 1 },
-        { name: "速妙圓 (側柏葉) 喉糖", note: "傳統草本", price: 238, limit: 1 },
-        { name: "DHC 減肥威力", note: "Diet Power", price: 902, limit: 4 }
-    ];
-
-    // --- 全局狀態 ---
-    const STORAGE_KEY = 'hokkaido_shopping_ultra_v1';
-    let appData = {
-        users: ["Neo", "Ryan"], // 預設使用者
-        orders: [],
-        activeOrderId: null
-    };
-
-    // --- 初始化 ---
-    function init() {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            appData = JSON.parse(saved);
-        } else {
-            createNewOrder(false); // 建立初始訂單
-        }
-        
-        // 防呆：如果讀取後沒訂單或沒使用者
-        if (appData.orders.length === 0) createNewOrder(false);
-        if (appData.users.length === 0) appData.users = ["Neo", "Ryan"];
-        if (!appData.activeOrderId) appData.activeOrderId = appData.orders[0].id;
-
-        renderAll();
-    }
-
-    function createNewOrder(refresh = true) {
-        const newId = 'order_' + Date.now();
-        // 建立新訂單時，每個商品的 quantities 初始化為空物件 {}
-        // key 將會是使用者名字
-        const items = defaultItems.map(p => ({
-            ...p,
-            quantities: {} 
-        }));
-
-        appData.orders.push({
-            id: newId,
-            name: `購物清單 ${appData.orders.length + 1}`,
-            items: items
-        });
-        appData.activeOrderId = newId;
-        
-        saveData();
-        if (refresh) renderAll();
-    }
-
-    // --- 成員管理邏輯 ---
-    function addMember() {
-        const input = document.getElementById('newMemberName');
-        const name = input.value.trim();
-        if (!name) return;
-        if (appData.users.includes(name)) {
-            alert('成員名字重複了！');
-            return;
-        }
-
-        appData.users.push(name);
-        input.value = '';
-        saveData();
-        renderAll();
-    }
-
-    function removeMember(name) {
-        if (!confirm(`確定要移除成員「${name}」嗎？\n他在此次所有訂單中的購買紀錄都會被刪除！`)) return;
-        
-        // 1. 從使用者列表移除
-        appData.users = appData.users.filter(u => u !== name);
-        
-        // 2. 清除所有訂單中該使用者的數量
-        appData.orders.forEach(order => {
-            order.items.forEach(item => {
-                if (item.quantities[name]) {
-                    delete item.quantities[name];
-                }
-            });
-        });
-
-        saveData();
-        renderAll();
-    }
-
-    // --- 核心渲染 ---
-    function renderAll() {
-        renderMembers();
-        renderTabs();
-        renderTable(); // 包含表頭與內容
-        calculateTotals();
-    }
-
-    function renderMembers() {
-        const container = document.getElementById('memberTags');
-        container.innerHTML = appData.users.map(u => `
-            <div class="member-tag">
-                ${u}
-                <span class="member-remove" onclick="removeMember('${u}')">×</span>
-            </div>
-        `).join('');
-    }
-
-    function renderTabs() {
-        const container = document.getElementById('tabsHeader');
-        let html = appData.orders.map(o => `
-            <div class="tab ${o.id === appData.activeOrderId ? 'active' : ''}" 
-                 onclick="switchTab('${o.id}')">
-                ${o.name}
-            </div>
-        `).join('');
-        
-        html += `<button class="btn-icon" style="margin-left:5px; background:#ddd;" onclick="createNewOrder()">+</button>`;
-        container.innerHTML = html;
-
-        const currentOrder = getCurrentOrder();
-        document.getElementById('orderName').value = currentOrder.name;
-    }
-
-    function renderTable() {
-        const thead = document.getElementById('tableHeader');
-        const tbody = document.getElementById('tableBody');
-        const order = getCurrentOrder();
-
-        // 1. 建立表頭
-        // 固定欄位
-        let headerHTML = `<th>品項</th><th>原購</th><th>單價</th>`;
-        // 動態使用者欄位
-        appData.users.forEach(user => {
-            headerHTML += `<th>${user}</th>`;
-        });
-        // 結尾欄位
-        headerHTML += `<th>剩餘</th><th>刪</th>`;
-        thead.innerHTML = headerHTML;
-
-        // 2. 建立表格內容
-        tbody.innerHTML = order.items.map((item, index) => {
-            // 計算目前已分配總數
-            let totalAssigned = 0;
-            appData.users.forEach(u => {
-                totalAssigned += (item.quantities[u] || 0);
-            });
-            const remaining = item.limit - totalAssigned;
-
-            // 狀態樣式
-            let remainClass = 'remain-col';
-            let inputClass = '';
-            let remainText = remaining;
-
-            if (remaining < 0) {
-                remainClass = 'remain-error';
-                inputClass = 'input-error';
-            } else if (remaining === 0) {
-                remainClass = 'remain-ok';
-                remainText = '✔';
-            }
-
-            // 產生該列 HTML
-            let rowHTML = `<tr>`;
-            
-            // 品名與原購量
-            rowHTML += `
-                <td>
-                    <div style="font-weight:500;">${item.name}</div>
-                    ${item.note ? `<span class="note">${item.note}</span>` : ''}
-                </td>
-                <td style="color:#64748b; font-weight:bold;">${item.limit}</td>
-                <td style="font-family:monospace; color:#7c3aed;">${item.price}</td>
-            `;
-
-            // 使用者輸入框
-            appData.users.forEach(user => {
-                const qty = item.quantities[user] || ''; // 若無值顯示空字串
-                rowHTML += `
-                    <td>
-                        <input type="number" class="${inputClass}" 
-                               value="${qty}" placeholder="0" min="0"
-                               oninput="updateQuantity(${index}, '${user}', this.value)">
-                    </td>
-                `;
-            });
-
-            // 剩餘量與刪除鈕
-            rowHTML += `
-                <td class="${remainClass}">${remainText}</td>
-                <td><button class="btn-icon" style="color:#ccc; background:none;" onclick="deleteItem(${index})">×</button></td>
-            `;
-            
-            rowHTML += `</tr>`;
-            return rowHTML;
-        }).join('');
-    }
-
-    // --- 資料操作 ---
-    function updateQuantity(itemIndex, user, value) {
-        const order = getCurrentOrder();
-        const val = parseFloat(value) || 0;
-        
-        // 更新資料
-        order.items[itemIndex].quantities[user] = val;
-        
-        saveData();
-        // 這裡為了保持輸入焦點，不重新渲染整個 table，只用 JS 計算更新部分 UI 會比較順
-        // 但為了程式碼簡潔，這裡直接重新渲染會有閃爍問題。
-        // 改良：只重新計算 Total 和 該行的樣式，不重繪 DOM
-        
-        // 重新計算總額
-        calculateTotals();
-        
-        // 手動更新該行的樣式 (避免重繪導致 focus 跑掉)
-        updateRowVisuals(itemIndex); 
-    }
-
-    function updateRowVisuals(index) {
-        const order = getCurrentOrder();
-        const item = order.items[index];
-        const row = document.getElementById('tableBody').children[index];
-        if (!row) return;
-
-        let totalAssigned = 0;
-        appData.users.forEach(u => totalAssigned += (item.quantities[u] || 0));
-        const remaining = item.limit - totalAssigned;
-        
-        // 更新剩餘欄位 (倒數第二個 td)
-        const remainCell = row.children[row.children.length - 2];
-        
-        // 更新 Input 樣式
-        const inputs = row.querySelectorAll('input');
-        
-        if (remaining < 0) {
-            remainCell.className = 'remain-error';
-            remainCell.textContent = remaining;
-            inputs.forEach(input => input.classList.add('input-error'));
-        } else if (remaining === 0) {
-            remainCell.className = 'remain-ok';
-            remainCell.textContent = '✔';
-            inputs.forEach(input => input.classList.remove('input-error'));
-        } else {
-            remainCell.className = '';
-            remainCell.textContent = remaining;
-            inputs.forEach(input => input.classList.remove('input-error'));
-        }
-    }
-
-    function addNewItem() {
-        const name = document.getElementById('addItemName').value.trim();
-        const price = parseFloat(document.getElementById('addItemPrice').value);
-        const limit = parseInt(document.getElementById('addItemLimit').value);
-        
-        if (!name || isNaN(price) || isNaN(limit)) {
-            alert('請完整填寫品項資訊');
-            return;
-        }
-
-        getCurrentOrder().items.push({
-            name, price, limit, note: '自訂', quantities: {}
-        });
-
-        // 清空
-        document.getElementById('addItemName').value = '';
-        document.getElementById('addItemPrice').value = '';
-        document.getElementById('addItemLimit').value = '';
-        
-        saveData();
-        renderTable();
-        calculateTotals();
-    }
-
-    function deleteItem(index) {
-        if(confirm('刪除此品項？')) {
-            getCurrentOrder().items.splice(index, 1);
-            saveData();
-            renderTable();
-            calculateTotals();
-        }
-    }
-
-    function calculateTotals() {
-        const order = getCurrentOrder();
-        const totals = {}; // { 'Neo': 1000, 'Ryan': 500 }
-        let grandTotal = 0;
-
-        // 初始化
-        appData.users.forEach(u => totals[u] = 0);
-
-        // 計算
-        order.items.forEach(item => {
-            appData.users.forEach(user => {
-                const qty = item.quantities[user] || 0;
-                const cost = qty * item.price;
-                totals[user] += cost;
-                grandTotal += cost;
-            });
-        });
-
-        // 渲染底部
-        const bar = document.getElementById('totalBar');
-        let html = `<div class="total-grand">總計 $${grandTotal.toLocaleString()}</div>`;
-        
-        appData.users.forEach(user => {
-            html += `
-                <div class="total-user">
-                    ${user}
-                    <span>$${totals[user].toLocaleString()}</span>
-                </div>
-            `;
-        });
-        
-        bar.innerHTML = html;
-    }
-
-    // --- 通用工具 ---
-    function getCurrentOrder() {
-        return appData.orders.find(o => o.id === appData.activeOrderId);
-    }
-
-    function switchTab(id) {
-        appData.activeOrderId = id;
-        saveData();
-        renderAll();
-    }
-
-    function updateOrderName(val) {
-        getCurrentOrder().name = val;
-        saveData();
-        renderTabs();
-    }
-
-    function deleteCurrentOrder() {
-        if (appData.orders.length <= 1) {
-            alert('至少需保留一張訂單');
-            return;
-        }
-        if (confirm('確定刪除此訂單頁面？')) {
-            appData.orders = appData.orders.filter(o => o.id !== appData.activeOrderId);
-            appData.activeOrderId = appData.orders[0].id;
-            saveData();
-            renderAll();
-        }
-    }
-
-    function saveData() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-    }
-
-    // Start
-    init();
+tailwind.config = {
+theme: {
+extend: {
+fontFamily: { sans: ['"Outfit"', 'sans-serif'] },
+colors: {
+pop: {
+bg: '#F0F9FF',
+card: '#FFFFFF',
+dark: '#0f172a',
+blue: '#3B82F6',
+yellow: '#FACC15',
+red: '#EF4444',
+green: '#22c55e',
+purple: '#A855F7',
+off: '#E2E8F0'
+}
+},
+boxShadow: {
+'hard': '4px 4px 0px 0px #0f172a',
+'hard-hover': '6px 6px 0px 0px #0f172a',
+'hard-active': '0px 0px 0px 0px #0f172a',
+},
+animation: {
+'slide-up': 'slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+'pop-in': 'pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+},
+keyframes: {
+'slide-up': {
+'0%': { transform: 'translateY(100%)', opacity: 0 },
+'100%': { transform: 'translateY(0)', opacity: 1 },
+},
+'pop-in': {
+'0%': { transform: 'scale(0)' },
+'100%': { transform: 'scale(1)' },
+}
+}
+}
+}
+}
 </script>
+<style>
+body {
+background-color: #F0F9FF;
+background-image: radial-gradient(#3B82F6 2px, transparent 2px);
+background-size: 24px 24px;
+overscroll-behavior-y: none;
+user-select: none;
+-webkit-user-select: none;
+}
+::-webkit-scrollbar { width: 0px; background: transparent; }
+.modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.95); }
 
+.sortable-ghost {
+opacity: 0.4;
+background-color: #FACC15 !important;
+border-style: dashed !important;
+}
+.sortable-drag { cursor: grabbing; }
+.drag-handle { cursor: grab; touch-action: none; }
+.drag-handle:active { cursor: grabbing; }
+</style>
+</head>
+<body class="min-h-screen text-pop-dark flex justify-center p-4 sm:p-8 selection:bg-pop-yellow selection:text-black">
+
+<div id="app" class="w-full max-w-4xl relative">
+
+<header class="text-center mb-6 mt-4">
+<div class="inline-block relative">
+<div class="absolute -right-6 -top-6 text-5xl animate-bounce">⚡️</div>
+<h1 class="text-4xl sm:text-5xl font-black italic tracking-tighter text-pop-dark bg-white border-4 border-pop-dark px-6 py-2 shadow-hard transform -rotate-2">
+DAILY <span class="text-pop-green">TRACKER</span>
+</h1>
+</div>
+</header>
+
+<div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-8 sticky top-2 z-40 bg-pop-bg/90 p-2 backdrop-blur-sm rounded-xl">
+
+<button @click="openAddModal"
+class="group bg-pop-yellow hover:bg-yellow-300 text-pop-dark font-black text-lg px-6 py-2 border-4 border-pop-dark shadow-hard hover:shadow-hard-hover active:shadow-hard-active active:translate-x-1 active:translate-y-1 transition-all duration-200 rounded-xl flex items-center gap-2 whitespace-nowrap">
+NEW <span class="bg-black text-white rounded-full w-6 h-6 flex items-center justify-center text-sm group-hover:rotate-90 transition-transform">＋</span>
+</button>
+
+<div class="relative w-full sm:w-64 group">
+<input type="text" v-model="searchQuery" placeholder="Filter items..."
+class="w-full bg-white border-4 border-pop-dark shadow-hard rounded-xl px-4 py-2 font-bold outline-none focus:translate-x-[2px] focus:translate-y-[2px] focus:shadow-none transition-all placeholder:text-gray-400">
+<div class="absolute right-3 top-1/2 -translate-y-1/2 text-xl grayscale opacity-50">🔍</div>
+</div>
+
+<button @click="takeScreenshot" title="Download Screenshot"
+class="bg-pop-purple hover:bg-purple-400 text-white font-black text-lg px-4 py-2 border-4 border-pop-dark shadow-hard hover:shadow-hard-hover active:shadow-hard-active active:translate-x-1 active:translate-y-1 transition-all duration-200 rounded-xl flex items-center gap-2 whitespace-nowrap">
+SNAP 📸
+</button>
+</div>
+
+<div class="text-center mb-4 h-6">
+<p v-if="!searchQuery" class="font-bold text-pop-dark/60 text-xs bg-white/80 inline-block px-3 py-1 rounded-full border-2 border-transparent">
+Hold the dots to reorder
+</p>
+<p v-else class="font-bold text-pop-red text-xs bg-white/80 inline-block px-3 py-1 rounded-full border-2 border-pop-red">
+Sorting disabled while searching
+</p>
+</div>
+
+<div id="capture-target" class="p-2 -m-2 rounded-2xl bg-transparent">
+
+<div id="sortable-list" v-if="filteredLinks.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 pb-20">
+
+<div v-for="(link, index) in filteredLinks" :key="link.id" :data-id="link.id"
+class="bg-white border-4 border-pop-dark rounded-xl p-4 shadow-hard flex flex-col hover:-translate-y-1 transition-transform duration-200 relative group">
+
+<div v-if="!searchQuery" class="drag-handle absolute top-2 right-2 p-2 cursor-grab opacity-30 group-hover:opacity-100 hover:text-pop-blue transition-opacity z-10" title="Drag to reorder">
+<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8h16M4 16h16"/></svg>
+</div>
+
+<div class="mb-3 mt-4 bg-gray-100 rounded-lg p-2 border-2 border-pop-dark/10 flex flex-wrap gap-1.5 min-h-[32px] items-center justify-center pointer-events-none">
+<span v-if="!link.clicks || link.clicks === 0" class="text-xs font-bold text-gray-400 w-full text-center">READY</span>
+<template v-else-if="link.clicks <= 10">
+<div v-for="n in link.clicks" :key="n"
+class="w-3 h-3 rounded-full bg-pop-green border-2 border-pop-dark shadow-[1px_1px_0px_#000] animate-pop-in"></div>
+</template>
+<div v-else class="flex items-center gap-2 font-black text-pop-green">
+<span class="text-xl">{{ link.clicks }}</span>
+<div class="w-3 h-3 rounded-full bg-pop-green border-2 border-pop-dark"></div>
+</div>
+</div>
+
+<div class="mb-3 flex-1 select-none">
+<h3 class="font-black text-xl mb-1 line-clamp-1 leading-tight" :title="link.name">
+{{ link.name }}
+</h3>
+<div class="text-xs font-mono text-gray-400 truncate">
+{{ link.url }}
+</div>
+</div>
+
+<div class="mt-auto flex gap-2">
+<a href="#" @click.prevent="visitLink(link)"
+class="flex-1 bg-pop-blue hover:bg-blue-400 text-white font-bold py-2 px-3 rounded-lg border-2 border-pop-dark shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all text-center flex items-center justify-center gap-1">
+GO 🚀
+</a>
+
+<button @click="openEditModal(link)"
+class="w-10 bg-white hover:bg-gray-50 text-pop-dark font-bold rounded-lg border-2 border-pop-dark shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center justify-center">
+✏️
+</button>
+
+<button @click="removeLink(link)"
+class="w-10 bg-pop-red hover:bg-red-400 text-white font-bold rounded-lg border-2 border-pop-dark shadow-[2px_2px_0px_0px_#000] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all flex items-center justify-center">
+✕
+</button>
+</div>
+</div>
+
+</div>
+
+<div v-else class="text-center py-20 opacity-50">
+<div class="text-7xl mb-4 grayscale">📅</div>
+<p class="font-bold text-xl">{{ searchQuery ? 'NO MATCHES FOUND' : 'NO TASKS YET' }}</p>
+</div>
+</div>
+
+<transition name="modal">
+<div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+<div class="absolute inset-0 bg-pop-blue/20 backdrop-blur-sm" @click="closeModal"></div>
+<div class="relative bg-white w-full max-w-md border-4 border-pop-dark shadow-hard rounded-2xl p-6 animate-slide-up">
+<h3 class="font-black text-xl uppercase mb-6 text-center bg-pop-yellow border-2 border-pop-dark py-2 rounded shadow-hard transform -rotate-1 inline-block mx-auto w-full">
+{{ isEditing ? 'Edit Task' : 'New Task' }}
+</h3>
+<div class="space-y-4">
+<div>
+<label class="font-bold text-xs uppercase">Title</label>
+<input type="text" v-model="form.name" class="w-full bg-gray-50 border-4 border-gray-200 focus:border-pop-blue rounded-xl px-3 py-2 font-bold outline-none text-lg">
+</div>
+<div>
+<label class="font-bold text-xs uppercase">Url / Text</label>
+<textarea v-model="form.content" rows="3" class="w-full bg-gray-50 border-4 border-gray-200 focus:border-pop-blue rounded-xl px-3 py-2 font-medium outline-none resize-none"></textarea>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-3 mt-6">
+<button @click="closeModal" class="py-2 font-bold border-4 border-transparent hover:bg-gray-100 rounded-xl text-gray-500">CANCEL</button>
+<button @click="saveLink" class="py-2 bg-pop-dark text-white font-bold rounded-xl border-4 border-pop-dark shadow-hard active:shadow-active active:translate-x-1 active:translate-y-1">SAVE</button>
+</div>
+</div>
+</div>
+</transition>
+
+<div v-if="message" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce">
+<div class="bg-pop-green text-white border-4 border-pop-dark px-6 py-2 rounded-xl shadow-hard font-bold flex items-center gap-2">
+<span>👍</span> {{ message }}
+</div>
+</div>
+
+</div>
+
+<script>
+const { createApp, reactive, ref, computed, onMounted, nextTick, watch } = Vue;
+
+createApp({
+setup() {
+const links = ref([]);
+const searchQuery = ref(''); // 新增：搜尋關鍵字
+const message = ref('');
+const showModal = ref(false);
+const isEditing = ref(false);
+const currentEditId = ref(null); // 改用 ID 追蹤編輯
+const form = reactive({ name: '', content: '' });
+let sortableInstance = null;
+
+const getTaipeiDate = () => {
+return new Intl.DateTimeFormat('zh-TW', {
+timeZone: 'Asia/Taipei',
+year: 'numeric', month: '2-digit', day: '2-digit'
+}).format(new Date());
+};
+
+// 篩選邏輯
+const filteredLinks = computed(() => {
+if (!searchQuery.value.trim()) return links.value;
+const query = searchQuery.value.toLowerCase();
+return links.value.filter(link =>
+link.name.toLowerCase().includes(query)
+);
+});
+
+// 初始化拖曳
+const initSortable = () => {
+const el = document.getElementById('sortable-list');
+if (!el) return;
+
+// 如果已經有實例，先銷毀 (避免重複綁定)
+if (sortableInstance) sortableInstance.destroy();
+
+sortableInstance = new Sortable(el, {
+handle: '.drag-handle',
+animation: 150,
+ghostClass: 'sortable-ghost',
+dragClass: 'sortable-drag',
+delay: 100,
+delayOnTouchOnly: true,
+// 當正在搜尋時，禁止排序 (因為 DOM index 和 array index 不對應)
+disabled: searchQuery.value !== '',
+onEnd: (evt) => {
+if (searchQuery.value !== '') return; // 雙重保險
+const item = links.value.splice(evt.oldIndex, 1)[0];
+links.value.splice(evt.newIndex, 0, item);
+saveData();
+}
+});
+};
+
+// 監聽搜尋變化：如果有搜尋，停用拖曳；沒搜尋，啟用拖曳
+watch(searchQuery, (newVal) => {
+if (sortableInstance) {
+sortableInstance.option("disabled", newVal !== '');
+}
+});
+
+onMounted(() => {
+const saved = localStorage.getItem('sunny-links');
+if (saved) links.value = JSON.parse(saved);
+else {
+const old = localStorage.getItem('lofi-links') || localStorage.getItem('arcane-spells');
+if (old) {
+links.value = JSON.parse(old);
+links.value.forEach(link => link.clicks = 0);
+}
+}
+
+const lastResetDate = localStorage.getItem('last-reset-date');
+const todayDate = getTaipeiDate();
+
+if (lastResetDate !== todayDate) {
+links.value.forEach(link => link.clicks = 0);
+localStorage.setItem('last-reset-date', todayDate);
+saveData();
+}
+
+nextTick(() => { initSortable(); });
+});
+
+const saveData = () => {
+localStorage.setItem('sunny-links', JSON.stringify(links.value));
+};
+
+// 改為傳遞物件而非 index，以適應篩選後的狀態
+const visitLink = (link) => {
+if (!link.clicks) link.clicks = 0;
+link.clicks++;
+saveData();
+const url = link.url;
+const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+if (!newWindow) window.location.href = url;
+};
+
+const extractUrl = (text) => {
+if (!text) return '';
+const match = text.match(/(https?:\/\/[^\s]+)/);
+return match ? match[0] : text;
+};
+
+const showMessage = (msg) => {
+message.value = msg;
+setTimeout(() => message.value = '', 2000);
+};
+
+const openAddModal = () => {
+isEditing.value = false;
+form.name = '';
+form.content = '';
+showModal.value = true;
+};
+
+const openEditModal = (link) => {
+currentEditId.value = link.id;
+form.name = link.name;
+form.content = link.url;
+isEditing.value = true;
+showModal.value = true;
+};
+
+const closeModal = () => {
+showModal.value = false;
+};
+
+const saveLink = () => {
+if (!form.name || !form.content) return;
+const cleanUrl = extractUrl(form.content);
+
+if (isEditing.value) {
+const index = links.value.findIndex(l => l.id === currentEditId.value);
+if (index !== -1) {
+links.value[index].name = form.name;
+links.value[index].url = cleanUrl;
+}
+} else {
+links.value.unshift({
+id: Date.now(),
+name: form.name,
+url: cleanUrl,
+clicks: 0
+});
+// 重置搜尋，確保使用者能看到剛新增的項目
+searchQuery.value = '';
+}
+
+saveData();
+closeModal();
+showMessage(isEditing.value ? 'UPDATED!' : 'ADDED!');
+};
+
+const removeLink = (link) => {
+if(confirm('Delete this task?')) {
+const index = links.value.findIndex(l => l.id === link.id);
+if (index !== -1) {
+links.value.splice(index, 1);
+saveData();
+}
+}
+};
+
+// 截圖功能
+const takeScreenshot = async () => {
+showMessage('SNAPPING...');
+const element = document.getElementById('capture-target');
+
+// 使用 html2canvas
+try {
+const canvas = await html2canvas(element, {
+backgroundColor: '#F0F9FF', // 強制背景色，避免透明
+scale: 2, // 提高解析度
+});
+
+const link = document.createElement('a');
+const date = new Date().toISOString().slice(0, 10);
+link.download = `SunnyTracker-${date}.png`;
+link.href = canvas.toDataURL("image/png");
+link.click();
+
+setTimeout(() => showMessage('SAVED! 📁'), 500);
+} catch (err) {
+console.error(err);
+showMessage('ERROR 😢');
+}
+};
+
+return {
+links, filteredLinks, searchQuery, form, message, showModal, isEditing,
+visitLink, openAddModal, openEditModal, closeModal, saveLink, removeLink,
+takeScreenshot
+};
+}
+}).mount('#app');
+</script>
 </body>
 </html>
