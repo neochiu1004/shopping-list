@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🇯🇵 日本代購分帳 (終極截圖版)</title>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #9370DB; 
+            --primary-dark: #663399;
+            --bg-color: #f3f4f6;
+            --text-color: #374151;
+            --error-color: #ef4444;
+            --success-color: #10b981;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 140px;
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative; /* 為了截圖定位 */
+        }
+
+        h1 { text-align: center; color: var(--primary-color); margin-top: 0; }
+
+        /* 篩選與成員區塊 */
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 8px; flex-wrap: wrap; }
+        .filter-input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; flex: 1; }
+        .filter-select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+        .member-section { border-bottom: 2px dashed #e2e8f0; padding-bottom: 15px; margin-bottom: 15px; }
+        .member-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+        .member-tag { background-color: var(--primary-color); color: white; padding: 5px 12px; border-radius: 20px; font-size: 0.9em; display: flex; align-items: center; gap: 8px; }
+        .member-remove { cursor: pointer; background: rgba(255,255,255,0.3); border-radius: 50%; width: 18px; height: 18px; display: flex; justify-content: center; align-items: center; font-size: 12px; }
+
+        .tabs-wrapper { display: flex; overflow-x: auto; gap: 5px; border-bottom: 2px solid var(--primary-color); margin-bottom: 15px; padding-bottom: 2px; }
+        .tab { padding: 10px 20px; background: #e2e8f0; border-radius: 8px 8px 0 0; cursor: pointer; white-space: nowrap; color: #64748b; font-weight: bold; }
+        .tab.active { background: var(--primary-color); color: white; }
+
+        .btn-icon { border: none; cursor: pointer; padding: 8px 12px; border-radius: 6px; font-size: 0.9rem; }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-danger { background: #fee2e2; color: #991b1b; }
+        .btn-export { background: #3b82f6; color: white; }
+        .btn-export:hover { background: #2563eb; }
+
+        .table-responsive { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+        th { background-color: var(--primary-color); color: white; }
+        th:first-child, td:first-child { text-align: left; min-width: 140px; border-right: 2px solid #e2e8f0; background-color: inherit; }
+        tbody td:first-child { background-color: #fff; }
+
+        .note { font-size: 0.75em; color: #6b7280; display: block; }
+        input[type="number"] { width: 50px; padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px; text-align: center; }
+        .input-error { background-color: #fef2f2; border-color: var(--error-color) !important; color: var(--error-color); }
+        .remain-ok { color: var(--success-color); font-weight: bold; }
+        .remain-error { color: var(--error-color); font-weight: bold; }
+
+        /* 底部懸浮總計列 */
+        .total-bar {
+            position: fixed; bottom: 20px; left: 5%; width: 90%;
+            background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(8px);
+            color: white; border-radius: 16px; padding: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 100;
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        }
+
+        .total-scroll-area { display: flex; overflow-x: auto; gap: 20px; flex: 1; align-items: center; }
+        .total-grand { font-size: 1.1rem; font-weight: bold; color: #fbbf24; padding-right: 20px; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; }
+        .total-user { display: flex; flex-direction: column; font-size: 0.85rem; min-width: 60px; text-align: center; }
+        .total-user span { font-weight: bold; font-size: 1rem; }
+
+        @media (max-width: 600px) {
+            .total-bar { flex-direction: column; align-items: stretch; bottom: 10px; }
+            .total-scroll-area { padding-bottom: 10px; border-bottom: 1px solid #444; margin-bottom: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="captureTarget">
+    <h1>🇯🇵 日本代購分帳</h1>
+
+    <div class="member-section">
+        <div style="font-weight: bold; color: #64748b; margin-bottom: 10px;">⚙️ 成員設定</div>
+        <div class="member-tags" id="memberTags"></div>
+        <div style="display: flex; gap: 10px;" data-html2canvas-ignore="true">
+            <input type="text" id="newMemberName" placeholder="輸入名字..." style="width: 120px; padding: 6px; border-radius:6px; border:1px solid #ccc;">
+            <button class="btn-icon btn-primary" onclick="addMember()">+ 新增</button>
+        </div>
+    </div>
+
+    <div class="tabs-wrapper" id="tabsHeader" data-html2canvas-ignore="true"></div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <input type="text" id="orderName" onchange="updateOrderName(this.value)" 
+               style="font-size:1.3em; font-weight:bold; border:none; border-bottom:1px solid #ccc; width:200px; color:var(--primary-dark);" >
+        <button class="btn-icon btn-danger" onclick="deleteCurrentOrder()" data-html2canvas-ignore="true">🗑️ 刪除訂單</button>
+    </div>
+
+    <div class="filter-bar" data-html2canvas-ignore="true">
+        <input type="text" id="searchKeyword" class="filter-input" placeholder="🔍 搜尋品名..." oninput="renderTable()">
+        <select id="statusFilter" class="filter-select" onchange="renderTable()">
+            <option value="all">所有狀態</option>
+            <option value="incomplete">🔴 未買齊</option>
+            <option value="completed">🟢 已買齊</option>
+            <option value="over">⚠️ 買多了</option>
+        </select>
+    </div>
+
+    <div class="table-responsive">
+        <table id="mainTable">
+            <thead><tr id="tableHeader"></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div style="margin-top: 15px; padding: 10px; background: #f1f5f9; border-radius: 8px; display: flex; gap:8px; flex-wrap:wrap;" data-html2canvas-ignore="true">
+        <input type="text" id="addItemName" placeholder="品項" style="flex:2; padding:8px; border:1px solid #ccc; border-radius:6px;">
+        <input type="number" id="addItemPrice" placeholder="單價" style="width:70px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+        <input type="number" id="addItemLimit" placeholder="原購" style="width:60px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+        <button class="btn-icon btn-primary" onclick="addNewItem()">加入</button>
+    </div>
+
+    <div style="height: 20px;"></div>
+    <div style="text-align: center; color: #999; font-size: 0.8em; margin-top:10px;">
+        截圖時間: <span id="captureTime"></span>
+    </div>
+</div>
+
+<div class="total-bar">
+    <div class="total-scroll-area" id="totalScrollArea"></div>
+    <button class="btn-icon btn-export" onclick="exportImage()">📸 匯出圖片</button>
+</div>
+
+<script>
+    const defaultItems = [
+        { name: "葉黃素100 + 芝麻素", note: "1組(2包)", price: 9164, limit: 1 },
+        { name: "防風通聖散 Z", note: "漢方減肥", price: 5318, limit: 2 },
+        { name: "抹茶提拉米蘇巧克力", note: "", price: 828, limit: 2 },
+        { name: "Alfort 帆船巧克力", note: "", price: 275, limit: 1 },
+        { name: "龍角散 喉糖", note: "黑醋栗藍莓", price: 302, limit: 1 },
+        { name: "Ora2 Premium 牙膏", note: "芳香薄荷", price: 367, limit: 1 },
+        { name: "NONIO 牙膏", note: "藥用清涼薄荷", price: 302, limit: 1 },
+        { name: "DHC 武靴葉", note: "控糖 20日", price: 597, limit: 4 },
+        { name: "DHC 維他命C", note: "20日份", price: 155, limit: 7 },
+        { name: "龍角散 直服顆粒", note: "薄荷味", price: 275, limit: 2 },
+        { name: "KitKat 巧克力", note: "濃厚抹茶", price: 275, limit: 4 },
+        { name: "UHA味覺糖 Cororo", note: "葡萄", price: 109, limit: 5 },
+        { name: "UHA味覺糖 Cororo", note: "麝香葡萄", price: 109, limit: 5 },
+        { name: "UHA味覺糖 Cororo", note: "20世紀梨", price: 109, limit: 3 },
+        { name: "龍角散 直服顆粒", note: "水蜜桃味", price: 275, limit: 1 },
+        { name: "DHC 亞鉛 (鋅)", note: "20日份", price: 146, limit: 1 },
+        { name: "DHC 綜合維他命B群", note: "20日份", price: 164, limit: 2 },
+        { name: "DHC 甲殼素", note: "20日份", price: 330, limit: 2 },
+        { name: "DHC 肝臟精華+鳥氨酸", note: "20日份(解酒)", price: 735, limit: 1 },
+        { name: "速妙圓 (側柏葉) 喉糖", note: "傳統草本", price: 238, limit: 1 },
+        { name: "DHC 減肥威力", note: "Diet Power", price: 902, limit: 4 }
+    ];
+
+    const STORAGE_KEY = 'hokkaido_shopping_final_v1';
+    let appData = { users: ["Neo", "Ryan"], orders: [], activeOrderId: null };
+
+    function init() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) appData = JSON.parse(saved);
+        else createNewOrder(false);
+        
+        if (appData.orders.length === 0) createNewOrder(false);
+        if (appData.users.length === 0) appData.users = ["Neo", "Ryan"];
+        if (!appData.activeOrderId || !appData.orders.find(o => o.id === appData.activeOrderId)) {
+            appData.activeOrderId = appData.orders[0].id;
+        }
+        renderAll();
+    }
+
+    function createNewOrder(refresh = true) {
+        const newId = 'order_' + Date.now();
+        const items = defaultItems.map(p => ({ ...p, quantities: {} }));
+        appData.orders.push({ id: newId, name: `購物清單 ${appData.orders.length + 1}`, items: items });
+        appData.activeOrderId = newId;
+        saveData();
+        if (refresh) renderAll();
+    }
+
+    function addMember() {
+        const name = document.getElementById('newMemberName').value.trim();
+        if (!name || appData.users.includes(name)) return;
+        appData.users.push(name);
+        document.getElementById('newMemberName').value = '';
+        saveData();
+        renderAll();
+    }
+
+    function removeMember(name) {
+        if (!confirm(`確定移除 ${name}？`)) return;
+        appData.users = appData.users.filter(u => u !== name);
+        appData.orders.forEach(order => {
+            order.items.forEach(item => { if (item.quantities[name]) delete item.quantities[name]; });
+        });
+        saveData();
+        renderAll();
+    }
+
+    function updateQuantity(idx, user, val) {
+        getCurrentOrder().items[idx].quantities[user] = parseFloat(val) || 0;
+        saveData();
+        calculateTotals();
+        renderTable(); 
+    }
+
+    function addNewItem() {
+        const name = document.getElementById('addItemName').value.trim();
+        const price = parseFloat(document.getElementById('addItemPrice').value);
+        const limit = parseInt(document.getElementById('addItemLimit').value);
+        if (!name || isNaN(price) || isNaN(limit)) return alert('請填寫完整');
+        getCurrentOrder().items.push({ name, price, limit, note: '自訂', quantities: {} });
+        document.getElementById('addItemName').value = '';
+        document.getElementById('addItemPrice').value = '';
+        document.getElementById('addItemLimit').value = '';
+        saveData();
+        renderTable();
+        calculateTotals();
+    }
+
+    function deleteItem(index) {
+        if(confirm('刪除此品項？')) {
+            getCurrentOrder().items.splice(index, 1);
+            saveData();
+            renderTable();
+            calculateTotals();
+        }
+    }
+
+    function deleteCurrentOrder() {
+        if (appData.orders.length <= 1) return alert('至少需保留一張');
+        if (confirm('確定刪除此訂單？')) {
+            appData.orders = appData.orders.filter(o => o.id !== appData.activeOrderId);
+            appData.activeOrderId = appData.orders[0].id;
+            saveData();
+            renderAll();
+        }
+    }
+
+    function renderAll() {
+        renderMembers();
+        renderTabs();
+        renderTable();
+        calculateTotals();
+    }
+
+    function renderMembers() {
+        document.getElementById('memberTags').innerHTML = appData.users.map(u => 
+            `<div class="member-tag">${u}<span class="member-remove" onclick="removeMember('${u}')">×</span></div>`
+        ).join('');
+    }
+
+    function renderTabs() {
+        const container = document.getElementById('tabsHeader');
+        let html = appData.orders.map(o => 
+            `<div class="tab ${o.id === appData.activeOrderId ? 'active' : ''}" onclick="switchTab('${o.id}')">${o.name}</div>`
+        ).join('');
+        html += `<button class="btn-icon" style="margin-left:5px; background:#e2e8f0;" onclick="createNewOrder()">+</button>`;
+        container.innerHTML = html;
+        document.getElementById('orderName').value = getCurrentOrder().name;
+    }
+
+    function renderTable() {
+        const order = getCurrentOrder();
+        const keyword = document.getElementById('searchKeyword').value.toLowerCase();
+        const status = document.getElementById('statusFilter').value;
+        
+        let header = `<th>品項</th><th>原購</th><th>單價</th>`;
+        appData.users.forEach(u => header += `<th>${u}</th>`);
+        header += `<th>剩餘</th><th data-html2canvas-ignore="true">刪</th>`;
+        document.getElementById('tableHeader').innerHTML = header;
+
+        document.getElementById('tableBody').innerHTML = order.items.map((item, idx) => {
+            let totalAssigned = 0;
+            appData.users.forEach(u => totalAssigned += (item.quantities[u] || 0));
+            const remaining = item.limit - totalAssigned;
+            
+            if (keyword && !item.name.toLowerCase().includes(keyword)) return '';
+            if (status === 'incomplete' && remaining <= 0) return '';
+            if (status === 'completed' && remaining !== 0) return '';
+            if (status === 'over' && remaining >= 0) return '';
+
+            let remainClass = remaining < 0 ? 'remain-error' : (remaining === 0 ? 'remain-ok' : 'remain-col');
+            let inputClass = remaining < 0 ? 'input-error' : '';
+            let remainText = remaining === 0 ? '✔' : remaining;
+
+            let row = `<tr>
+                <td><div style="font-weight:500;">${item.name}</div>${item.note ? `<span class="note">${item.note}</span>` : ''}</td>
+                <td style="color:#64748b;">${item.limit}</td>
+                <td style="font-family:monospace; color:#7c3aed;">${item.price}</td>`;
+            
+            appData.users.forEach(u => {
+                const q = item.quantities[u];
+                row += `<td><input type="number" class="${inputClass}" value="${q===0?'':(q||'')}" placeholder="0" min="0" onchange="updateQuantity(${idx}, '${u}', this.value)"></td>`;
+            });
+
+            row += `<td class="${remainClass}">${remainText}</td>
+                    <td data-html2canvas-ignore="true"><button class="btn-icon" style="color:#ccc; background:none;" onclick="deleteItem(${idx})">×</button></td></tr>`;
+            return row;
+        }).join('');
+    }
+
+    function calculateTotals() {
+        const order = getCurrentOrder();
+        const totals = {}; 
+        let grandTotal = 0;
+        appData.users.forEach(u => totals[u] = 0);
+        order.items.forEach(item => {
+            appData.users.forEach(u => totals[u] += (item.quantities[u] || 0) * item.price);
+        });
+        Object.values(totals).forEach(v => grandTotal += v);
+
+        let html = `<div class="total-grand">總計 $${grandTotal.toLocaleString()}</div>`;
+        appData.users.forEach(u => html += `<div class="total-user">${u}<span>$${totals[u].toLocaleString()}</span></div>`);
+        document.getElementById('totalScrollArea').innerHTML = html;
+    }
+
+    // --- 升級版截圖功能 ---
+    function exportImage() {
+        const target = document.getElementById("captureTarget");
+        const totalSource = document.getElementById("totalScrollArea");
+        const btn = document.querySelector('.btn-export');
+        
+        // 1. 產生當下時間
+        const now = new Date();
+        document.getElementById('captureTime').innerText = `更新時間：${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        // 2. 暫時將總計列「複製」到底部，讓它變成靜態內容方便截圖
+        const tempFooter = document.createElement('div');
+        tempFooter.innerHTML = totalSource.innerHTML;
+        // 賦予它跟原本懸浮窗很像的樣式，但改為靜態區塊
+        Object.assign(tempFooter.style, {
+            backgroundColor: "#2c3e50", // 深色背景
+            color: "white",
+            padding: "20px",
+            borderRadius: "12px",
+            marginTop: "20px",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "space-around",
+            alignItems: "center",
+            gap: "15px"
+        });
+        target.appendChild(tempFooter); // 加到容器最下面
+
+        // 3. 修改按鈕文字
+        const originalText = btn.innerText;
+        btn.innerText = "📸 製作中...";
+
+        // 4. 開始截圖
+        html2canvas(target, {
+            scale: 2, // 高解析度
+            backgroundColor: "#ffffff",
+            useCORS: true,
+            scrollY: -window.scrollY // 修正捲動偏差
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = `ShoppingList_${getCurrentOrder().name}.png`;
+            link.href = canvas.toDataURL("image/png");
+            link.click();
+
+            // 5. 復原現場
+            target.removeChild(tempFooter); // 移除假冒的總計列
+            btn.innerText = originalText;
+            document.getElementById('captureTime').innerText = "";
+        }).catch(err => {
+            alert("截圖失敗，請改用手機截圖");
+            console.error(err);
+            if(tempFooter.parentNode) target.removeChild(tempFooter);
+            btn.innerText = originalText;
+        });
+    }
+
+    function getCurrentOrder() { return appData.orders.find(o => o.id === appData.activeOrderId); }
+    function switchTab(id) { appData.activeOrderId = id; saveData(); renderAll(); }
+    function updateOrderName(val) { getCurrentOrder().name = val; saveData(); renderTabs(); }
+    function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
+
+    init();
+</script>
+
+</body>
+</html>
